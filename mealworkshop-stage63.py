@@ -67,3 +67,69 @@ def get_menus_for_recipe(recipe: Recipe) -> List[Menu]:
     """Return all menus that include the given recipe (or a reference to it)."""
     key = recipe.to_id() if hasattr(recipe, 'to_id') else str(recipe)
     return menu_to_recipe.get(key, [])
+
+# === Stage 63: Add relationships between records where useful ===
+# Project: MealWorkshop
+from collections import defaultdict
+
+
+class RecipeLinks:
+    """Associates recipes with related items for richer navigation."""
+
+    def __init__(self):
+        self._meal_to_recipes = defaultdict(list)  # meal_name -> [recipe_ids]
+        self._ingredient_to_recipes = defaultdict(set)  # ingredient -> {recipe_id}
+        self._recipe_tags = defaultdict(set)  # tag -> {recipe_id}
+
+    def link_meal(self, meal_name, recipe):
+        """Record which recipes belong to a named meal."""
+        self._meal_to_recipes[meal_name].append(recipe)
+
+    def link_ingredient(self, ingredient, recipe):
+        """Track every recipe that uses an ingredient."""
+        self._ingredient_to_recipes[ingredient].add(recipe)
+
+    def link_tag(self, tag, recipe):
+        """Attach a free-form tag to a recipe for cross-referencing."""
+        self._recipe_tags[tag].add(recipe)
+
+    @property
+    def recipes_for_meal(self, meal_name):
+        return list(self._meal_to_recipes.get(meal_name, []))
+
+    @property
+    def recipes_for_ingredient(self, ingredient):
+        return sorted(self._ingredient_to_recipes.get(ingredient, set()))
+
+    @property
+    def recipes_with_tag(self, tag):
+        return sorted(self._recipe_tags.get(tag, set()))
+
+    @property
+    def all_links_summary(self):
+        """Return a compact summary of current links."""
+        return {
+            "meals": dict(self._meal_to_recipes),
+            "ingredients": dict(
+                (k, list(v)) for k, v in self._ingredient_to_recipes.items()
+            ),
+            "tags": dict((k, list(v)) for k, v in self._recipe_tags.items()),
+        }
+
+
+# Example usage:
+links = RecipeLinks()
+
+for meal_name, recipe in [
+    ("Breakfast", "oatmeal"),
+    ("Dinner", "chicken_stew"),
+]:
+    links.link_meal(meal_name, recipe)
+
+for ingredient, recipe in [
+    ("milk", "oatmeal"),
+    ("rice", "chicken_stew"),
+]:
+    links.link_ingredient(ingredient, recipe)
+
+links.link_tag("vegetarian", "oatmeal")
